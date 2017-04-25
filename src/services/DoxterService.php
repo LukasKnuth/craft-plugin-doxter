@@ -16,6 +16,8 @@ use selvinortiz\doxter\common\parsers\Typography;
 use selvinortiz\doxter\common\parsers\ReferenceTag;
 
 use function selvinortiz\doxter\doxter;
+use selvinortiz\doxter\events\DoxterRegisterShorcodesEvent;
+use yii\base\Event;
 
 /**
  * Class DoxterService
@@ -24,12 +26,13 @@ use function selvinortiz\doxter\doxter;
  */
 class DoxterService extends Component
 {
-    const EVENT_BEFORE_TYPOGRAPHY = 'beforeTypography';
-    const EVENT_BEFORE_HEADER_PARSE = 'beforeHeaderParsing';
-    const EVENT_BEFORE_MARKDOWN_PARSE = 'beforeMarkdownParsing';
-    const EVENT_BEFORE_SHORTCODE_PARSE = 'beforeShortcodeParsing';
-    const EVENT_BEFORE_CODEBLOCK_PARSE = 'beforeCodeBlockParsing';
-    const EVENT_BEFORE_REFERENCETAG_PARSE = 'beforeReferenceTagParsing';
+    const EVENT_BEFORE_TYPOGRAPHY = 'doxterBeforeTypography';
+    const EVENT_BEFORE_HEADER_PARSE = 'doxterBeforeHeaderParsing';
+    const EVENT_BEFORE_MARKDOWN_PARSE = 'doxterBeforeMarkdownParsing';
+    const EVENT_BEFORE_SHORTCODE_PARSE = 'doxterBeforeShortcodeParsing';
+    const EVENT_BEFORE_CODEBLOCK_PARSE = 'doxterBeforeCodeBlockParsing';
+    const EVENT_BEFORE_REFERENCETAG_PARSE = 'doxterBeforeReferenceTagParsing';
+    const EVENT_REGISTER_SHORTCODES = 'doxterRegisterShortcodes';
 
     /**
      * Parses source markdown into valid html using various rules and parsers
@@ -167,7 +170,22 @@ class DoxterService extends Component
      */
     public function parseShortcodes($source, array $options = [])
     {
-        Shortcode::instance()->registerShortcodes(doxter()->registerShortcodes());
+        $event = new DoxterRegisterShorcodesEvent();
+
+        Event::trigger(
+            self::class,
+            self::EVENT_SHORTCODE_REGISTRATION,
+            $event
+        );
+
+        $shortcodes = $event->getShortcodes();
+
+        if (empty($shortcodes)) {
+
+            return $source;
+        }
+
+        Shortcode::instance()->registerShortcodes($shortcodes);
 
         return Shortcode::instance()->parse($source, $options);
     }
